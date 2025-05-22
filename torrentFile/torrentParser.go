@@ -1,24 +1,21 @@
 package torrentFile
 
 import (
-	"bytes"
 	"crypto/sha1"
 	"errors"
+	"fmt"
 	"io"
 
-	"github.com/jackpal/bencode-go"
+	"github.com/anacrolix/torrent/bencode"
 )
 
-type bencodeInfo struct {
+type bencodeTorrent struct {
+	InfoBytes   Bytes  `bencode:"info,omitempty"`     // BEP 3
+	Announce    string `bencode:"announce,omitempty"` // BEP 3
 	Pieces      string `bencode:"pieces"`
 	PieceLength int    `bencode:"piece length"`
 	Length      int    `bencode:"length"`
 	Name        string `bencode:"name"`
-}
-
-type bencodeTorrent struct {
-	Announce string      `bencode:"announce"`
-	Info     bencodeInfo `bencode:"info"`
 }
 
 // TorrentFile encodes the metadata from a .torrent file
@@ -33,34 +30,30 @@ type TorrentFile struct {
 
 // Open parses a torrent file
 func Open(r io.Reader) (*bencodeTorrent, error) {
-	bto := bencodeTorrent{}
-	// we turn serial data into an object (also called unmarshalling)
-	err := bencode.Unmarshal(r, &bto)
+	bto := &bencodeTorrent{}
+	d := bencode.NewDecoder(r)
+	err := d.Decode(&bto)
 	if err != nil {
+		fmt.Println("failed to unmarshal bencode")
+		fmt.Println(err)
 		return nil, err
 	}
-	return &bto, nil
+	return bto, nil
 }
 
-func (i *bencodeInfo) createInfoHash() ([20]byte, error) {
-	var infoBuffer bytes.Buffer
-	err := bencode.Marshal(&infoBuffer, *i) // turn our object back into serial data
-	if err != nil {
-		return [20]byte{}, err
-	}
-
-	h := sha1.Sum(infoBuffer.Bytes()) // turn the bytes in info into a 20 bit hash
+func (i *bencodeTorrent) createInfoHash() ([20]byte, error) {
+	h := sha1.Sum(i.InfoBytes) // turn the bytes in info into a 20 bit hash
 	return h, nil
 }
 
-func (i *bencodeInfo) createPiecesHash() ([][20]byte, error) {
+func (i *bencodeTorrent) createPiecesHash() ([][20]byte, error) {
 	// TODO !!!
 	hashLen := 20
 	buf := []byte(i.Pieces)
 
 	// check if Pieces contains the correct no. of bytes
 	if len(buf)%hashLen != 0 {
-		return nil, errors.New("Pieces has a malformed length")
+		return nil, errors.New("pieces has a malformed length")
 	}
 
 	numHashes := len(buf) / hashLen
@@ -74,13 +67,13 @@ func (i *bencodeInfo) createPiecesHash() ([][20]byte, error) {
 func (bto *bencodeTorrent) ToTorrentFile() (TorrentFile, error) {
 
 	// create the info hash
-	newInfoHash, err := bto.Info.createInfoHash()
+	newInfoHash, err := bto.createInfoHash()
 	if err != nil {
 		return TorrentFile{}, err
 	}
 
 	// create the pieces hash
-	piecesHash, err := bto.Info.createPiecesHash()
+	piecesHash, err := bto.createPiecesHash()
 	if err != nil {
 		return TorrentFile{}, err
 	}
@@ -89,9 +82,9 @@ func (bto *bencodeTorrent) ToTorrentFile() (TorrentFile, error) {
 		Announce:    bto.Announce,
 		InfoHash:    newInfoHash,
 		PieceHashes: piecesHash,
-		PieceLength: bto.Info.PieceLength,
-		Length:      bto.Info.Length,
-		Name:        bto.Info.Name,
+		PieceLength: bto.PieceLength,
+		Length:      bto.Length,
+		Name:        bto.Name,
 	}
 
 	return t, nil

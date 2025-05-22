@@ -2,15 +2,15 @@ package torrentFile
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
 
-	"github.com/jackpal/bencode-go"
+	"github.com/anacrolix/torrent/bencode"
 )
 
 type Peer struct {
@@ -18,17 +18,24 @@ type Peer struct {
 	port uint16
 }
 
-type bencodeTrackerResp struct {
-	Interval int    `bencode:"interval"`
-	Peers    []byte `bencode:"peers"`
+// format peer as an address:port string
+func (p Peer) String() string {
+	return fmt.Sprintf("%s:%d", p.addr.String(), p.port)
 }
 
+type bencodeTrackerResp struct {
+	Interval int   `bencode:"interval"`
+	Peers    Bytes `bencode:"peers"`
+}
+
+// With the torrent informationi we have, generate a valid tracker URL
 func (t *TorrentFile) buildTrackerURL(peerID [20]byte, port uint16) (string, error) {
 	base, err := url.Parse(t.Announce)
 	if err != nil {
 		return "", err
 	}
 
+	fmt.Printf("converted hash: %v \n", hex.EncodeToString(t.InfoHash[:]))
 	params := base.Query()
 	params.Set("info_hash", string(t.InfoHash[:]))
 	params.Set("peer_id", string(peerID[:]))
@@ -42,40 +49,43 @@ func (t *TorrentFile) buildTrackerURL(peerID [20]byte, port uint16) (string, err
 	return base.String(), nil
 }
 
+// Sends a GET request to the generated tracker URL, returns timeout + a list of peers
 func (t *TorrentFile) requestPeers(peerID [20]byte, port uint16) ([]Peer, error) {
 	url, err := t.buildTrackerURL(peerID, port)
 	if err != nil {
 		return nil, err
 	}
 
-	client := &http.Client{Timeout: 15 * time.Second} // send GET request with 15 second timeout
+	// Create a new HTTP client with a 15 second timeout
+	client := &http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
+		fmt.Println("GET request failed")
+		fmt.Println(err.Error())
 		return nil, err
 	}
 
 	defer resp.Body.Close()
 
+	// Decode the response body into a bencodeTrackerResp struct
 	trackerResp := bencodeTrackerResp{}
+	d := bencode.NewDecoder(resp.Body)
+	err = d.Decode(&trackerResp)
 
-	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("Raw response body:\n%s\n", string(body))
-
-	err = bencode.Unmarshal(resp.Body, &trackerResp)
-	if err != nil {
+		fmt.Println("failed to unmarshal response from tracker")
 		return nil, err
 	}
 
-	fmt.Printf("Unmarshal check: interval=%d, peers=%d bytes\n", trackerResp.Interval, len(trackerResp.Peers))
+	fmt.Printf("Unmarshal check: interval= %d, peers= %d bytes\n", trackerResp.Interval, len(trackerResp.Peers))
 
 	peers := []Peer{}
 	// Parse peers, each peer is 6 bytes
 	for i := 0; i < len(trackerResp.Peers); i += 6 {
 		peers = append(peers, Peer{
+			// first 4 is the IP Address
 			addr: net.IP(trackerResp.Peers[i : i+4]),
+			// Last 2 is the port
 			port: binary.BigEndian.Uint16([]byte(trackerResp.Peers[i+4 : i+6])), // conver str -> byte -> uint16
 		})
 	}
