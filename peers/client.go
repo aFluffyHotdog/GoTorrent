@@ -2,6 +2,8 @@ package peers
 
 import (
 	"GoTorrent/torrentFile"
+	"bytes"
+	"fmt"
 	"net"
 	"time"
 )
@@ -24,13 +26,33 @@ func NewClient(peer torrentFile.Peer, peerID, infoHash [20]byte) (*Client, error
 		return nil, err
 	}
 
-	return nil, nil
+	Client := &Client{
+		Conn:   conn,	
+		Choked: false,
+		peer:   peer,
+		infoHash: infoHash,
+		peerID:   peerID,	
+	}
+	return Client, nil
 }
 
 func CompleteHandshake(c *Client) (Handshake, error) {
 	// send handshake to peer
+	handShake := NewHandshake(c.infoHash, c.peerID)
+	_, err := c.Conn.Write(handShake.Encode())
+	if err != nil {
+		return Handshake{}, err	
+	}
 	// read response from peer
-	// check if response is valid
-	// return error if not valid
-	return nil
+	buf := make([]byte, 68) // buffer for handshake response
+	n, err := c.Conn.Read(buf)
+	if n != 68 {
+		fmt.Println("err malformed handshake response")
+	}
+	recvHandshake, err := ReadHandshake(bytes.NewReader(buf))
+	// compare infoHashes
+	if !bytes.Equal(recvHandshake.InfoHash[:], c.infoHash[:]) {
+		return Handshake{}, fmt.Errorf("infoHashes don't match between client and peer")
+	}
+	return *recvHandshake, nil
 }
