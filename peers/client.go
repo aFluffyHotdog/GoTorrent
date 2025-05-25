@@ -10,9 +10,9 @@ import (
 
 // A Client is a TCP connection with a peer
 type Client struct {
-	Conn   net.Conn
-	Choked bool
-	//Bitfield bitfield.Bitfield
+	Conn     net.Conn
+	Choked   bool
+	Bitfield Bitfield
 	peer     torrentFile.Peer
 	infoHash [20]byte
 	peerID   [20]byte
@@ -27,11 +27,11 @@ func NewClient(peer torrentFile.Peer, peerID, infoHash [20]byte) (*Client, error
 	}
 
 	Client := &Client{
-		Conn:   conn,	
-		Choked: false,
-		peer:   peer,
+		Conn:     conn,
+		Choked:   false,
+		peer:     peer,
 		infoHash: infoHash,
-		peerID:   peerID,	
+		peerID:   peerID,
 	}
 	return Client, nil
 }
@@ -41,18 +41,19 @@ func CompleteHandshake(c *Client) (Handshake, error) {
 	handShake := NewHandshake(c.infoHash, c.peerID)
 	_, err := c.Conn.Write(handShake.Encode())
 	if err != nil {
-		return Handshake{}, err	
+		return Handshake{}, err
 	}
 	// read response from peer
 	buf := make([]byte, 68) // buffer for handshake response
 	n, err := c.Conn.Read(buf)
 	if n != 68 {
-		fmt.Println("err malformed handshake response")
+		fmt.Println("erroralformed handshake response")
+		return Handshake{}, err
 	}
 	recvHandshake, err := ReadHandshake(bytes.NewReader(buf))
 	// compare infoHashes
 	if !bytes.Equal(recvHandshake.InfoHash[:], c.infoHash[:]) {
-		return Handshake{}, fmt.Errorf("infoHashes don't match between client and peer")
+		return Handshake{}, err
 	}
 	return *recvHandshake, nil
 }
