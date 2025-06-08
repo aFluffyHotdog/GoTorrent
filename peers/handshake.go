@@ -1,6 +1,7 @@
 package peers
 
 import (
+	"encoding/hex"
 	"fmt"
 	"io"
 )
@@ -28,6 +29,9 @@ func (h *Handshake) Encode() []byte {
 	curr += copy(buf[curr:], make([]byte, 8)) // 8 reserved bytes, set to 0x0
 	curr += copy(buf[curr:], h.InfoHash[:])
 	curr += copy(buf[curr:], h.PeerID[:])
+	// Print as hex
+	fmt.Printf("Handshake buffer (hex): %s\n", hex.EncodeToString(buf))
+
 	return buf
 }
 

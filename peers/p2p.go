@@ -52,6 +52,7 @@ func (t *Torrent) Download() {
 	go func() {
 		for res := range writeQ {
 			// TODO: calculate where to write to file, and then write it
+			fmt.Println(res.index)
 		}
 
 	}()
@@ -59,5 +60,22 @@ func (t *Torrent) Download() {
 }
 
 func (t *Torrent) startDownloadWorker(peer torrentFile.Peer, workQ chan *pieceWork, resultQ chan *pieceResult) {
-	panic("unimplemented")
+
+	// create client
+	//c, err := NewClient(peer, t.PeerID, t.InfoHash)
+	// perform handshake
+	//_, err := c.CompleteHandshake()
+	//send unchoke and interested
+
+	// iterate over work queue
+
+	// check peer's bitfield
+	// If peer doesn't have that piece, put it back in q
+
+	// download that piece
+
+	// verify the integrity of downloaded piece
+
+	// send it through the result channel
+
 }

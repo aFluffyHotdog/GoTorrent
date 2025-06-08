@@ -24,8 +24,8 @@ func (p Peer) String() string {
 }
 
 type bencodeTrackerResp struct {
-	Interval int   `bencode:"interval"`
-	Peers    Bytes `bencode:"peers"`
+	Interval int    `bencode:"interval"`
+	Peers    string `bencode:"peers"`
 }
 
 // With the torrent informationi we have, generate a valid tracker URL
@@ -50,7 +50,7 @@ func (t *TorrentFile) buildTrackerURL(peerID [20]byte, port uint16) (string, err
 }
 
 // Sends a GET request to the generated tracker URL, returns timeout + a list of peers
-func (t *TorrentFile) requestPeers(peerID [20]byte, port uint16) ([]Peer, error) {
+func (t *TorrentFile) RequestPeers(peerID [20]byte, port uint16) ([]Peer, error) {
 	url, err := t.buildTrackerURL(peerID, port)
 	if err != nil {
 		return nil, err
