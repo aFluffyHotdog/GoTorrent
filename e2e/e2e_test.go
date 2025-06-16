@@ -63,6 +63,6 @@ func TestOpen(t *testing.T) {
 			continue
 		}
 		fmt.Println("Handshake completed with peer:", peers_list[i])
-		fmt.Println("Peer ID:", handshake.PeerID)
+		fmt.Println("Peer ID:", string(handshake.PeerID[:]))
 	}
 }
