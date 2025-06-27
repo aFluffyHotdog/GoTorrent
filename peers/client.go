@@ -3,6 +3,7 @@ package peers
 import (
 	"GoTorrent/torrentFile"
 	"bytes"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"time"
@@ -42,15 +43,25 @@ func (c *Client) CompleteHandshake() (Handshake, error) {
 	defer c.Conn.SetDeadline(time.Time{}) // Disable the deadline
 
 	handShake := NewHandshake(c.infoHash, c.peerID)
+	fmt.Println("Handshake Pstr: ", handShake.Pstr)
+	fmt.Println("Handshake infohash: ", hex.EncodeToString(handShake.InfoHash[:]))
+	fmt.Println("Handshake PeerID: ", string(handShake.PeerID[:]))
 	_, err := c.Conn.Write(handShake.Encode())
 	if err != nil {
 		return Handshake{}, err
 	}
+
+	// set a read deadline before reading handshake response
+	c.Conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	defer c.Conn.SetReadDeadline(time.Time{}) // Disable the read deadline
+
 	// read response from peer
 	buf := make([]byte, 68) // buffer for handshake response
 	n, err := c.Conn.Read(buf)
 	if n != 68 {
-		fmt.Println("error malformed handshake response")
+		// fmt.Println("malformed handshake response. buffer len: ", n)
+		s := string(buf)
+		fmt.Println(s)
 		return Handshake{}, err
 	}
 	recvHandshake, err := ReadHandshake(bytes.NewReader(buf))

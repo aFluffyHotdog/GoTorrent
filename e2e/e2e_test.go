@@ -34,7 +34,7 @@ func TestOpen(t *testing.T) {
 		fmt.Println("failed to convert into TorrentFile object")
 	}
 	fmt.Println(testTorrentFile.Announce)
-
+	fmt.Println(testTorrentFile.Name)
 	// Test requesting peers
 	peerID := GeneratePeerID()
 	const port uint16 = 6882
@@ -42,7 +42,7 @@ func TestOpen(t *testing.T) {
 	peers_list, err := testTorrentFile.RequestPeers(peerID, port)
 
 	if err != nil {
-		fmt.Println("failed to request peers")
+		fmt.Println(" Failed to request peers")
 		fmt.Println(err)
 	}
 	fmt.Println("Peers Length: ", len(peers_list))

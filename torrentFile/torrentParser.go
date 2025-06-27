@@ -10,8 +10,12 @@ import (
 )
 
 type bencodeTorrent struct {
-	InfoBytes   Bytes  `bencode:"info,omitempty"`     // BEP 3
-	Announce    string `bencode:"announce,omitempty"` // BEP 3
+	InfoBytes Bytes `bencode:"info"` // BEP 3
+	AlsoInfo  torrentInfo
+	Announce  string `bencode:"announce"` // BEP 3
+}
+
+type torrentInfo struct {
 	Pieces      string `bencode:"pieces"`
 	PieceLength int    `bencode:"piece length"`
 	Length      int    `bencode:"length"`
@@ -38,6 +42,15 @@ func Open(r io.Reader) (*bencodeTorrent, error) {
 		fmt.Println(err)
 		return nil, err
 	}
+
+	var tempInfo torrentInfo
+	err = bencode.Unmarshal(bto.InfoBytes, &tempInfo)
+	if err != nil {
+		fmt.Println("failed to unmarshal torrentinfo")
+		fmt.Println(err)
+		return nil, err
+	}
+	bto.AlsoInfo = tempInfo
 	return bto, nil
 }
 
@@ -47,15 +60,13 @@ func (i *bencodeTorrent) createInfoHash() ([20]byte, error) {
 }
 
 func (i *bencodeTorrent) createPiecesHash() ([][20]byte, error) {
-	// TODO !!!
 	hashLen := 20
-	buf := []byte(i.Pieces)
+	buf := []byte(i.AlsoInfo.Pieces)
 
 	// check if Pieces contains the correct no. of bytes
 	if len(buf)%hashLen != 0 {
 		return nil, errors.New("pieces has a malformed length")
 	}
-
 	numHashes := len(buf) / hashLen
 	hashes := make([][20]byte, numHashes) // make is used for initializing slices, while new is like malloc
 	for i := 0; i < numHashes; i++ {
@@ -82,9 +93,9 @@ func (bto *bencodeTorrent) ToTorrentFile() (TorrentFile, error) {
 		Announce:    bto.Announce,
 		InfoHash:    newInfoHash,
 		PieceHashes: piecesHash,
-		PieceLength: bto.PieceLength,
-		Length:      bto.Length,
-		Name:        bto.Name,
+		PieceLength: bto.AlsoInfo.PieceLength,
+		Length:      bto.AlsoInfo.Length,
+		Name:        bto.AlsoInfo.Name,
 	}
 
 	return t, nil

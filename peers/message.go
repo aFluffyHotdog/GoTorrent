@@ -27,9 +27,14 @@ type Message struct {
 }
 
 // Serializes a message into RAW bytes
+// <length prefix><message ID><payload>
 func (m *Message) SerializeMessage() []byte {
+	if m == nil {
+		return make([]byte, 4)
+	}
 	length := uint32(1 + len(m.Payload)) // message flag + content
-	buf := make([]byte, length)          // len bit + message flag + content
+	//fmt.Println("Serializing message of length: ", length)
+	buf := make([]byte, 4+length) // len bit + message flag + content
 	binary.BigEndian.PutUint32(buf[0:4], length)
 	buf[4] = byte(m.ID)
 	copy(buf[5:], m.Payload)
