@@ -6,7 +6,7 @@ type Bitfield []byte
 
 func (b Bitfield) HasPiece(n int) bool {
 	byteIndex := n / 8
-	offset := n / 8
+	offset := n % 8
 	if offset > 7 {
 		fmt.Println("something went wrong with bitfield n is ", n)
 	}
@@ -16,7 +16,7 @@ func (b Bitfield) HasPiece(n int) bool {
 
 func (b Bitfield) SetPiece(n int) {
 	byteIndex := n / 8
-	offset := n / 8
+	offset := n % 8
 	if offset > 7 {
 		fmt.Println("something went wrong with bitfield n is ", n)
 	}
