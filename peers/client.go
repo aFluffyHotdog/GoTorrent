@@ -3,7 +3,6 @@ package peers
 import (
 	"GoTorrent/torrentFile"
 	"bytes"
-	"encoding/hex"
 	"fmt"
 	"net"
 	"time"
@@ -34,6 +33,21 @@ func NewClient(peer torrentFile.Peer, peerID, infoHash [20]byte) (*Client, error
 		infoHash: infoHash,
 		peerID:   peerID,
 	}
+
+	// perform handshake
+	_, err = Client.CompleteHandshake()
+	if err != nil {
+		err = fmt.Errorf("failed to complete handshake with peer: %s", peer)
+		return nil, err
+	}
+
+	bitfield, err := Client.receiveBitField()
+	if err != nil {
+		return nil, err
+	}
+	Client.Bitfield = bitfield
+
+	fmt.Println("Completed handshake with peer: ", peer)
 	return Client, nil
 }
 
@@ -43,9 +57,9 @@ func (c *Client) CompleteHandshake() (Handshake, error) {
 	defer c.Conn.SetDeadline(time.Time{}) // Disable the deadline
 
 	handShake := NewHandshake(c.infoHash, c.peerID)
-	fmt.Println("Handshake Pstr: ", handShake.Pstr)
-	fmt.Println("Handshake infohash: ", hex.EncodeToString(handShake.InfoHash[:]))
-	fmt.Println("Handshake PeerID: ", string(handShake.PeerID[:]))
+	// fmt.Println("Handshake Pstr: ", handShake.Pstr)
+	// fmt.Println("Handshake infohash: ", hex.EncodeToString(handShake.InfoHash[:]))
+	// fmt.Println("Handshake PeerID: ", string(handShake.PeerID[:]))
 	_, err := c.Conn.Write(handShake.Encode())
 	if err != nil {
 		return Handshake{}, err
@@ -72,7 +86,28 @@ func (c *Client) CompleteHandshake() (Handshake, error) {
 	return *recvHandshake, nil
 }
 
-// TODO: Write function to receive bitfield
+func (c *Client) receiveBitField() (Bitfield, error) {
+	c.Conn.SetDeadline(time.Now().Add(5 * time.Second))
+	defer c.Conn.SetDeadline(time.Time{})
+
+	msg, err := Read(c.Conn)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if msg == nil {
+		err := fmt.Errorf("no message received")
+		return nil, err
+	}
+	if msg.ID != MsgBitfield {
+		err := fmt.Errorf("expected bitfield but got type: %d", msg.ID)
+		return nil, err
+	}
+
+	return msg.Payload, nil
+
+}
 
 // reads a message from the client connection
 func (c *Client) Read() (*Message, error) {

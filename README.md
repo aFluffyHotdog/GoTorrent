@@ -5,10 +5,10 @@ TODO:
     The problem with that is because we are not sending out bitfield messages to anyone.
 4. Support multiple file torrents?
 
-24/6: Right now the program terminates after finishing the handshakes, will have to see what's wrong. Turns out the pieceHashes is empty, need to check how it's being parsed
 
+27/6 Issue solved: I just added one field for raw bits used to convert into infoHash, and another one to access the torrent info.
 
-
+24/6: Right now the program terminates after finishing the handshakes, will have to see what's wrong. Turns out the pieceHashes is empty, need to check how it's being parsed.
 
 Currently struggling with sending handshakes out to peers. They all seem to time out :( womp womp
 

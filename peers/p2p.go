@@ -105,14 +105,6 @@ func (t *Torrent) startDownloadWorker(peer torrentFile.Peer, workQ chan *pieceWo
 		fmt.Println(err)
 		return
 	}
-	// perform handshake
-	fmt.Println("Completeing handshake with peer: ", peer)
-	_, err = c.CompleteHandshake()
-	if err != nil {
-		fmt.Println("Failed to complete handshake with peer:", peer)
-		return
-	}
-	fmt.Println("Completed handshake with peer: ", peer)
 
 	// Send unchoke and interested
 	err = c.SendUnchoke()
