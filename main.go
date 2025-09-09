@@ -52,6 +52,24 @@ func main() {
 		Length:      t.Length,
 		Name:        t.Name,
 	}
-	_, err = torrent.Download()
 
+	var result []byte
+	result, err = torrent.Download()
+	if err != nil {
+		fmt.Println("Download failed:", err)
+	}
+	// Write the downloaded byte array to disk
+	outFile, err := os.Create("debian.iso")
+	if err != nil {
+		fmt.Println("Failed to create output file:", err)
+		return
+	}
+	defer outFile.Close()
+
+	_, err = outFile.Write(result)
+	if err != nil {
+		fmt.Println("Failed to write to output file:", err)
+		return
+	}
+	fmt.Println("Download written to output_file.bin")
 }
